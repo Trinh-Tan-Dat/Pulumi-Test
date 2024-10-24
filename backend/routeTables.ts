@@ -3,7 +3,7 @@ import { vpc } from "./vpc";
 import { internetGateway } from "./internetGateway";
 import { natGateway } from "./natGateway";
 import { publicSubnet, privateSubnet } from "./subnets";
-const publicRouteTable = new aws.ec2.RouteTable("public-route-table", {
+export const publicRouteTable = new aws.ec2.RouteTable("public-route-table", {
     vpcId: vpc.id,
     routes: [{
         cidrBlock: "0.0.0.0/0",
@@ -16,7 +16,7 @@ new aws.ec2.RouteTableAssociation("public-rta", {
     routeTableId: publicRouteTable.id,
 });
 
-const privateRouteTable = new aws.ec2.RouteTable("private-route-table", {
+export const privateRouteTable = new aws.ec2.RouteTable("private-route-table", {
     vpcId: vpc.id,
     routes: [{
         cidrBlock: "0.0.0.0/0",
