@@ -67,6 +67,52 @@ app.get("/stack/status", async (req: express.Request, res: express.Response) => 
     }
 });
 
+
+app.put("/stack/update", async (req: express.Request, res: express.Response) => {
+    const { instanceId, newName } = req.body;
+
+    if (!instanceId || !newName) {
+        res.status(400).send("ID and name are required.");
+    }
+
+    try {
+        const command = new CreateTagsCommand({
+            Resources: [instanceId],
+            Tags: [
+                {
+                    Key: "Name",
+                    Value: newName,
+                },
+            ],
+        });
+
+        await ec2Client.send(command);
+        res.status(200).send(`EC2 instance "${instanceId}" renamed to "${newName}" successfully.`);
+    } catch (error) {
+        res.status(500).send(`Failed to update name for EC2 instance: ${error}`);
+    }
+});
+
+
+app.delete("/stack/delete", async (req: express.Request, res: express.Response) => {
+    const { instanceId } = req.body;
+
+    if (!instanceId) {
+        res.status(400).send("Instance ID is required.");
+    }
+
+    try {
+        const command = new TerminateInstancesCommand({
+            InstanceIds: [instanceId],
+        });
+
+        await ec2Client.send(command);
+        res.status(200).send(`EC2 instance "${instanceId}" terminated successfully.`);
+    } catch (error) {
+        res.status(500).send(`Failed to terminate EC2 instance: ${error}`);
+    }
+});
+
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
