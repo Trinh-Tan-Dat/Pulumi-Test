@@ -2,6 +2,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import { exec } from "child_process";
 import * as util from "util";
+import { EC2Client, DescribeInstancesCommand, CreateTagsCommand, TerminateInstancesCommand } from "@aws-sdk/client-ec2";
+const ec2Client = new EC2Client({ region: "us-east-1" });
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,7 +14,7 @@ const execPromise = util.promisify(exec);
 // Keep track of existing instances
 let instanceNames: string[] = [];
 
-app.post("/ec2", async (req: express.Request, res: express.Response) => {
+app.post("/stack/create", async (req: express.Request, res: express.Response) => {
     const { instanceName } = req.body;
 
     if (!instanceName) {
@@ -35,6 +37,33 @@ app.post("/ec2", async (req: express.Request, res: express.Response) => {
         res.status(201).send(`EC2 instances "${instanceNames.join(", ")}" processed successfully.`);
     } catch (error) {
         res.status(500).send(`Failed to process EC2 instances: ${error}`);
+    }
+});
+
+app.get("/stack/status", async (req: express.Request, res: express.Response) => {
+    try {
+        const command = new DescribeInstancesCommand({
+            Filters: [
+                {
+                    Name: "instance-state-name",
+                    Values: ["running", "pending", "stopping", "stopped"]
+                }
+            ]
+        });
+        const data = await ec2Client.send(command);
+
+        const statuses = (data.Reservations ?? []).map(reservation =>
+            (reservation.Instances ?? []).map(instance => ({
+                InstanceId: instance?.InstanceId ?? "N/A",
+                State: instance?.State?.Name ?? "Unknown",
+                InstanceType: instance?.InstanceType ?? "N/A",
+                PublicIpAddress: instance?.PublicIpAddress ?? "N/A",
+                PrivateIpAddress: instance?.PrivateIpAddress ?? "N/A",
+            }))
+        ).flat();
+        res.json({ statuses });
+    } catch (error) {
+        res.status(500).json({ error: error });
     }
 });
 
